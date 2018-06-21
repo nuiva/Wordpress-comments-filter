@@ -37,21 +37,8 @@ function isFiltered(name) {
   return GM_getValue(name, 0);
 }
 
-function hideComments() {
-  $("li.comment").each(function(){
-    var $this = $(this);
-    var $comment = $this.children(":first");
-    var name = $comment.find("b.fn").text();
-    if (isFiltered(name)) {
-      $this.hide();
-    } else {
-      $this.show();
-    }
-  });
-}
-
-
-var $unfilterdiv = $("#comments").append("<div><p>Filtered:</p></div>");
+var $unfilterdiv = $("<div><p>Filtered:</p></div>");
+$("#comments").append($unfilterdiv);
 function addUnfilterButton(name) {
   var $button = $("<button>"+name+"</button>");
   $unfilterdiv.append($button);
@@ -61,7 +48,42 @@ function addUnfilterButton(name) {
     hideComments();
   });
 }
-GM_listValues().forEach(addUnfilterButton);
+
+function msgFilterCondition(msg) {
+  var numwords = msg.trim().split(/\s+/).length;
+  if (numwords <= 3 ||
+      (msg.match(/(^|\W)(thanks|thx)/i) && numwords <= 10)) {
+    return true;
+  }
+  return false;
+}
+
+function hideComments() {
+  $unfilterdiv.find("button").remove();
+  var buttons = [];
+  $("li.comment").each(function(){
+    var $this = $(this);
+    var $comment = $this.children(":first");
+    var name = $comment.find("b.fn").text();
+    if (isFiltered(name)) {
+      $this.hide();
+      if (!buttons.includes(name)) {
+        buttons.push(name);
+        addUnfilterButton(name);
+      }
+      return;
+    }
+    var msg = "";
+    $comment.find(".comment-content p:not(:last-of-type)").each(function() {
+      msg += $(this).text();
+    });
+    if (msgFilterCondition(msg)) {
+      $this.hide();
+      return;
+    }
+    $this.show();
+  });
+}
 
 function addFilterButtons() {
   $("li.comment").each(function(){
@@ -71,11 +93,9 @@ function addFilterButtons() {
     $comment.find(".comment-metadata").append("<button style=\"margin-left: 10px; padding: 2px;\">Filter</button>").click(function(){
       filterName(name);
       hideComments();
-      addUnfilterButton(name);
     });
   });
 }
 
 hideComments();
 addFilterButtons();
-
